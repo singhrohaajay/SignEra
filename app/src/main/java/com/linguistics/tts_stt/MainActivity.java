@@ -2,10 +2,12 @@ package com.linguistics.tts_stt;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -17,57 +19,109 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.TextView;
+import android.widget.MediaController;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import java.util.ArrayList;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    TextView textView;
     EditText editText;
     ImageButton imageButton;
     Button button;
     Button video;
     TextToSpeech tts;
+    VideoView videoView;
+    int imageId;
+    String s="";
+    static int indexCounter;
+    ArrayList<Integer> words;
     private static final int AUDIO_RECORD_PERMISSION_CONSTANT = 100;
     private static final int REQUEST_PERMISSION_SETTING = 101;
     private boolean sentToSettings = false;
     private SharedPreferences permissionStatus;
-
+MediaController mediaController;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
         setContentView(R.layout.activity_main);
 
-        textView=findViewById(R.id.textView);
+        indexCounter=1;
+        videoView = findViewById(R.id.vdVw);
+        //Set MediaController  to enable play, pause, forward, etc options.
+         mediaController = new MediaController(this);
+        mediaController.setAnchorView(videoView);
+        //Location of Media File
+
+
+
+
         editText=findViewById(R.id.editText);
         imageButton=findViewById(R.id.imageButton);
         button=findViewById(R.id.button);
         video=findViewById(R.id.video);
+
+        videoView.setVisibility(View.INVISIBLE);
 
         permissionStatus = getSharedPreferences("permissionStatus",MODE_PRIVATE);
 
         video.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final Intent intent=new Intent(getApplicationContext(),Video.class);
-                if(!textView.getText().equals("")){
-                    intent.putExtra("Key",editText.getText().toString());
-                    String s=editText.getText().toString();
-                    startActivity(intent);
-                    overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                if(!editText.getText().toString().equals("")){
+                     s=editText.getText().toString();
+                     s=s.toLowerCase();
+
+                    words = yamSplit(s);
+                    Uri uri = Uri.parse("android.resource://" + getPackageName() + "/" + words.get(0));
+                    //Starting VideView By Setting MediaController and URI
+                    videoView.setMediaController(mediaController);
+                    videoView.setVideoURI(uri);
+                    videoView.requestFocus();
+                    videoView.start();
+                    videoView.setVisibility(View.VISIBLE);
+                    videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                        @Override
+                        public void onPrepared(MediaPlayer arg0) {
+                            Log.i("ajaypagalh", "Playing video");
+                            videoView.requestFocus();
+                            videoView.start();
+                        }
+                    });
 
 
                 }
             }
         });
+
+        videoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            public void onCompletion(MediaPlayer mp) {
+
+                if(indexCounter<words.size()) {
+                    Uri uri22 = Uri.parse("android.resource://" + getPackageName() + "/" + words.get(indexCounter++));
+                    videoView.setVideoURI(uri22);
+                }
+                else videoView.setVisibility(View.INVISIBLE);
+            }
+        });
+        videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+            @Override
+            public boolean onError(MediaPlayer mp, int what, int extra) {
+                Toast.makeText(getApplicationContext(), "Error in mediaplayer", Toast.LENGTH_SHORT).show();
+
+                return true;
+            }
+        });
+
 
 
         final SpeechRecognizer mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
@@ -77,7 +131,6 @@ public class MainActivity extends AppCompatActivity {
         mSpeechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,
                 Locale.getDefault());
 
-       //  checkPermission();
 
 
 
@@ -88,13 +141,13 @@ public class MainActivity extends AppCompatActivity {
                 switch (motionEvent.getAction()) {
                     case MotionEvent.ACTION_UP:
                         mSpeechRecognizer.stopListening();
-                        textView.setHint("You will see input here");
+                        editText.setHint("You will see input here");
                         break;
 
                     case MotionEvent.ACTION_DOWN:
                         mSpeechRecognizer.startListening(mSpeechRecognizerIntent);
-                        textView.setText("");
-                        textView.setHint("Listening...");
+                        editText.setText("");
+                        editText.setHint("Listening...");
                         break;
                 }
                 return false;
@@ -215,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
 
                 //displaying the first match
                 if (matches != null)
-                    textView.setText(matches.get(0));
+                    editText.setText(matches.get(0));
                 editText.setText(matches.get(0));
                     tts.speak("You said "+ matches.get(0), TextToSpeech.QUEUE_FLUSH, null);
             }
@@ -246,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 String toSpeak = editText.getText().toString();
-                textView.setText(toSpeak);
+                editText.setText(toSpeak);
                 Toast.makeText(getApplicationContext(), toSpeak,Toast.LENGTH_SHORT).show();
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     tts.speak(toSpeak,TextToSpeech.QUEUE_FLUSH,null,null);
@@ -255,6 +308,8 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+
 
     }
 
@@ -337,15 +392,34 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void checkPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!(ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)) {
-                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
-                finish();
+
+
+    public static int getResourseId(Context context, String pVariableName, String pResourcename, String pPackageName) throws RuntimeException {
+        try {
+            return context.getResources().getIdentifier(pVariableName, pResourcename, pPackageName);
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting Resource ID.", e);
+        }
+    }
+    public ArrayList<Integer> yamSplit(String sentence)
+    {
+        String[] splittedwords=sentence.split("\\W+");
+        ArrayList<Integer> words=new ArrayList<>();
+        for(int i=0;i<splittedwords.length;i++){
+            imageId = getResourseId(this, splittedwords[i], "raw", getPackageName());
+            if(imageId!=0)
+            {
+                words.add(imageId);
+            }
+            else{
+                for(int j=0;j<splittedwords[i].length();j++){
+                    imageId = getResourseId(this, ""+splittedwords[i].charAt(j), "raw", getPackageName());
+                    words.add(imageId);
+                }
             }
         }
+        return words;
+
     }
 
 }
