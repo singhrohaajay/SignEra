@@ -55,7 +55,7 @@ MediaController mediaController;
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
         setContentView(R.layout.activity_main);
 
-        indexCounter=1;
+        indexCounter=0;
         videoView = findViewById(R.id.vdVw);
         //Set MediaController  to enable play, pause, forward, etc options.
          mediaController = new MediaController(this);
@@ -79,11 +79,22 @@ MediaController mediaController;
             public void onClick(View v) {
                 if(!editText.getText().toString().equals("")){
                      s=editText.getText().toString();
+                     s=s.replace(""+1,"one");
+                    s=s.replace(""+2,"two");
+                    s=s.replace(""+3,"three");
+                    s=s.replace(""+4,"four");
+                    s=s.replace(""+5,"five");
+                    s=s.replace(""+6,"six");
+                    s=s.replace(""+7,"seven");
+                    s=s.replace(""+8,"eight");
+                    s=s.replace(""+9,"nine");
+                    s=s.replace(""+0,"ten");
                      s=s.toLowerCase();
 
-                    words = yamSplit(s);
+                    words = Split(s);
                     Uri uri = Uri.parse("android.resource://" + getPackageName() + "/" + words.get(0));
-                    //Starting VideView By Setting MediaController and URI
+                    indexCounter++;
+                    //Starting VideoView By Setting MediaController and URI
                     videoView.setMediaController(mediaController);
                     videoView.setVideoURI(uri);
                     videoView.requestFocus();
@@ -92,7 +103,6 @@ MediaController mediaController;
                     videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                         @Override
                         public void onPrepared(MediaPlayer arg0) {
-                            Log.i("ajaypagalh", "Playing video");
                             videoView.requestFocus();
                             videoView.start();
                         }
@@ -110,7 +120,11 @@ MediaController mediaController;
                     Uri uri22 = Uri.parse("android.resource://" + getPackageName() + "/" + words.get(indexCounter++));
                     videoView.setVideoURI(uri22);
                 }
-                else videoView.setVisibility(View.INVISIBLE);
+                else {
+                    videoView.setVisibility(View.INVISIBLE);
+                    indexCounter=0;
+
+                }
             }
         });
         videoView.setOnErrorListener(new MediaPlayer.OnErrorListener() {
@@ -206,12 +220,12 @@ MediaController mediaController;
                         builder.show();
                     } else {
                         //just request the permission
-                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, AUDIO_RECORD_PERMISSION_CONSTANT);
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.RECORD_AUDIO}, AUDIO_RECORD_PERMISSION_CONSTANT);
                     }
 
 
                     SharedPreferences.Editor editor = permissionStatus.edit();
-                    editor.putBoolean(Manifest.permission.WRITE_EXTERNAL_STORAGE,true);
+                    editor.putBoolean(Manifest.permission.RECORD_AUDIO,true);
                     editor.commit();
 
 
@@ -401,7 +415,7 @@ MediaController mediaController;
             throw new RuntimeException("Error getting Resource ID.", e);
         }
     }
-    public ArrayList<Integer> yamSplit(String sentence)
+    public ArrayList<Integer> Split(String sentence)
     {
         String[] splittedwords=sentence.split("\\W+");
         ArrayList<Integer> words=new ArrayList<>();
@@ -414,7 +428,13 @@ MediaController mediaController;
             else{
                 for(int j=0;j<splittedwords[i].length();j++){
                     imageId = getResourseId(this, ""+splittedwords[i].charAt(j), "raw", getPackageName());
-                    words.add(imageId);
+                    if(imageId!=0)
+                    {
+                        words.add(imageId);
+                    }
+                    else{
+                        Toast.makeText(getApplicationContext()," No Sign Found for this ",Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
         }
